@@ -38,9 +38,9 @@ def dither(num, thresh = 127):
 
 def ditherImage(input_img, output_path=None, threshold=127, mode='floyd-steinberg'):
     if hasattr(input_img, 'filename'):
-        logger.info('Running image dither on {}.'.format(os.path.basename(input_img.filename)))
+        logger.info('Performing image dithering on {}.'.format(os.path.basename(input_img.filename)))
     else:
-        logger.info('Running image dither.')
+        logger.info('Performing image dithering.')
     
     dither_img = Image.NONE
 
@@ -60,9 +60,9 @@ def ditherImage(input_img, output_path=None, threshold=127, mode='floyd-steinber
 
 def findEdgesInImage(input_img, output_path=None):
     if hasattr(input_img, 'filename'):
-        logger.info('Running edge filter on {}.'.format(os.path.basename(input_img.filename)))
+        logger.info('Performing image edge filtering on {}.'.format(os.path.basename(input_img.filename)))
     else:
-        logger.info('Running edge filter.')
+        logger.info('Performing image edge filtering.')
 
     edge_img = input_img.filter(ImageFilter.FIND_EDGES)
 
@@ -144,8 +144,8 @@ def main():
     if args.save:
         file_name, ext = os.path.splitext(os.path.basename(args.input_file))
         dir_path = os.path.dirname(args.input_file)
-        edge_save_path = file_name + '_f-edge.' + args.ext
-        dither_save_path = file_name + '_dither.' + args.ext
+        dither_save_path = file_name + '_dithered.' + args.ext
+        inverted_save_path = file_name + '_inverted.' + args.ext
     else:
         dither_save_path = None
         edge_save_path = None
