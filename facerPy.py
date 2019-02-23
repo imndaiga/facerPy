@@ -7,6 +7,7 @@ import logging
 import argparse
 from PIL import Image, ImageEnhance, ImageOps, ImageFilter
 import numpy as np
+import cv2
 
 logger = logging.getLogger('facerPy')
 
@@ -83,6 +84,25 @@ def invertImage(input_img, output_path=None):
         logger.info('Saving inverted image output to {}.'.format(output_path))
         inverted_img.save(output_path)
     return inverted_img
+
+def findFacesInImage(input_img):
+    if hasattr(input_img, 'filename'):
+        logger.info('Performing face detection on {}.'.format(os.path.basename(input_img.filename)))
+    else:
+        logger.info('Performing face detection.')
+
+    img = np.array(input_img)
+    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    faces = face_cascade.detectMultiScale(gray_img, 1.2, 6)
+
+    if len(faces) == 0:
+        logger.warning('No faces found!')
+        x, y = input_img.size
+        return np.array([])
+
+    logger.info(f'Found {len(faces)} face(s)!')
+    return faces
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -166,17 +186,59 @@ def main():
     start_time = time.time()
     input_img = Image.open(args.input_file)
     edge_img = findEdgesInImage(input_img, edge_save_path)
+    faces = findFacesInImage(input_img)
 
-    pre_dither_img = edge_img.convert('L')
-    if args.dither_contrast:
-        pre_dither_img = ImageEnhance.Contrast(pre_dither_img).enhance(args.dither_contrast)
-    if args.dither_resize:
-        pre_dither_img.thumbnail((args.dither_resize,) * 2, 3)
-    if args.dither_sharpness:
-        pre_dither_img = ImageEnhance.Sharpness(pre_dither_img).enhance(args.dither_sharpness)
+    imgs_arr = []
+    if len(faces) > 0:
+        cv2_img = cv2.cvtColor(np.array(input_img), cv2.COLOR_RGB2BGR)
+        for i, (x, y, w, h) in enumerate(faces):
+            face_img = Image.fromarray(np.array(edge_img)[y:y+h, x:x+w])
+            dith_save_arr = list(dither_save_path)
+            inv_save_arr = list(inverted_save_path)
+            dith_save_arr.insert(dither_save_path.find('.'),'_face{}'.format(i + 1))
+            inv_save_arr.insert(inverted_save_path.find('.'),'_face{}'.format(i + 1))
 
-    dither_img = ditherImage(pre_dither_img, dither_save_path, args.dither_threshold, args.dither_mode)
-    inverted_img = invertImage(dither_img, inverted_save_path)
+            imgs_arr.append({
+                'dither_save_path': ''.join(dith_save_arr),
+                'inverted_save_path': ''.join(inv_save_arr)
+                    ,
+                'img': face_img,
+            })
+            cv2.rectangle(cv2_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+        logger.info('Displaying all face detections in window.')
+        res_cv2_img = cv2.resize(cv2_img, (0, 0), fx=0.15, fy=0.15)
+        cv2.imshow("Face Detections", res_cv2_img)
+        cv2.waitKey(0)
+    else:
+        imgs_arr.append(
+            {
+                'dither_save_path': dither_save_path,
+                'inverted_save_path': inverted_save_path,
+                'img': input_img,
+            }
+        )
+
+    for img_obj in imgs_arr:
+        pre_dither_img = img_obj['img'].convert('L')
+        if args.dither_contrast:
+            pre_dither_img = ImageEnhance.Contrast(pre_dither_img).enhance(args.dither_contrast)
+        if args.dither_resize:
+            pre_dither_img.thumbnail((args.dither_resize,) * 2, 3)
+        if args.dither_sharpness:
+            pre_dither_img = ImageEnhance.Sharpness(pre_dither_img).enhance(args.dither_sharpness)
+
+        dither_img = ditherImage(
+            pre_dither_img,
+            img_obj['dither_save_path'],
+            args.dither_threshold,
+            args.dither_mode,
+        )
+        inverted_img = invertImage(
+            dither_img,
+            img_obj['inverted_save_path'],
+        )
+
     end_time = time.time()
     logger.info('Image processing complete! Total Time Taken: {:.2f} seconds.'.format(end_time - start_time))
 
