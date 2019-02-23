@@ -76,46 +76,40 @@ def findEdgesInImage(input_img, output_path=None):
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
-        '-i',
-        '--input-file',
+        '-i', '--input-file',
         dest='input_file',
         help='file path to the input image.',
     )
     parser.add_argument(
-        '-l',
-        '--log-level',
+        '-l', '--log-level',
         choices=['debug', 'info', 'warning', 'error', 'critical'],
         default='critical',
         dest='log_level',
         help='set logging level',
     )
     parser.add_argument(
-        '-s',
-        '--save',
+        '-s', '--save',
         action='store_true',
         help='save processed images',
     )
     parser.add_argument(
-        '-dm',
-        '--dither-mode',
+        '-e', '--ext',
+        default='png',
+        help='output filetype',
+    )
+    parser.add_argument(
+        '-dm', '--dither-mode',
         choices=['atkinson','floyd-steinberg'],
         default='floyd-steinberg',
         dest='dither_mode',
         help='select dithering method',
     )
     parser.add_argument(
-        '-dt',
-        '--dither-threshold',
+        '-dt', '--dither-threshold',
         type = int,
         default=127,
         dest='dither_threshold',
         help='black/white threshold',
-    )
-    parser.add_argument(
-        '-e',
-        '--ext',
-        default='png',
-        help='output filetype',
     )
     args = parser.parse_args()
 
