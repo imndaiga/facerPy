@@ -5,8 +5,7 @@ import sys
 import time
 import logging
 import argparse
-from PIL import Image, ImageEnhance
-from PIL import ImageFilter
+from PIL import Image, ImageEnhance, ImageOps, ImageFilter
 import numpy as np
 
 logger = logging.getLogger('facerPy')
@@ -72,6 +71,18 @@ def findEdgesInImage(input_img, output_path=None):
 
     logger.info('Completed edge filtering.')
     return edge_img
+
+def invertImage(input_img, output_path=None):
+    if hasattr(input_img, 'filename'):
+        logger.info('Performing image inversion on {}.'.format(os.path.basename(input_img.filename)))
+    else:
+        logger.info('Performing image inversion.')
+
+    inverted_img = ImageOps.invert(input_img)
+    if output_path:
+        logger.info('Saving inverted image output to {}.'.format(output_path))
+        inverted_img.save(output_path)
+    return inverted_img
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -144,11 +155,13 @@ def main():
     if args.save:
         file_name, ext = os.path.splitext(os.path.basename(args.input_file))
         dir_path = os.path.dirname(args.input_file)
+        edge_save_path = file_name + '_edges.' + args.ext
         dither_save_path = file_name + '_dithered.' + args.ext
         inverted_save_path = file_name + '_inverted.' + args.ext
     else:
         dither_save_path = None
         edge_save_path = None
+        inverted_save_path = None
 
     start_time = time.time()
     input_img = Image.open(args.input_file)
@@ -163,6 +176,7 @@ def main():
         pre_dither_img = ImageEnhance.Sharpness(pre_dither_img).enhance(args.dither_sharpness)
 
     dither_img = ditherImage(pre_dither_img, dither_save_path, args.dither_threshold, args.dither_mode)
+    inverted_img = invertImage(dither_img, inverted_save_path)
     end_time = time.time()
     logger.info('Image processing complete! Total Time Taken: {:.2f} seconds.'.format(end_time - start_time))
 
