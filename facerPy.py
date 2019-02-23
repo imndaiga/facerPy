@@ -111,6 +111,24 @@ def main():
         dest='dither_threshold',
         help='black/white threshold',
     )
+    parser.add_argument(
+        '-dc', '--dither-contrast',
+        type = float,
+        dest='dither_contrast',
+        help = 'boost contrast by specified factor (default = 1)',
+    )
+    parser.add_argument(
+        '-ds', '--dither-sharpness',
+        type = float,
+        dest='dither_sharpness',
+        help = 'boost sharpness by specified factor (default = 1)',
+    )
+    parser.add_argument(
+        '-dr', '--dither-resize',
+        type = int,
+        dest='dither_resize',
+        help = 'resize pre-dither image on longest dimension',
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -135,7 +153,16 @@ def main():
     start_time = time.time()
     input_img = Image.open(args.input_file)
     edge_img = findEdgesInImage(input_img, edge_save_path)
-    dither_img = ditherImage(edge_img.convert('L'), dither_save_path, args.dither_threshold, args.dither_mode)
+
+    pre_dither_img = edge_img.convert('L')
+    if args.dither_contrast:
+        pre_dither_img = ImageEnhance.Contrast(pre_dither_img).enhance(args.dither_contrast)
+    if args.dither_resize:
+        pre_dither_img.thumbnail((args.dither_resize,) * 2, 3)
+    if args.dither_sharpness:
+        pre_dither_img = ImageEnhance.Sharpness(pre_dither_img).enhance(args.dither_sharpness)
+
+    dither_img = ditherImage(pre_dither_img, dither_save_path, args.dither_threshold, args.dither_mode)
     end_time = time.time()
     logger.info('Image processing complete! Total Time Taken: {:.2f} seconds.'.format(end_time - start_time))
 
