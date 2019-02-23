@@ -111,6 +111,12 @@ def main():
         dest='dither_threshold',
         help='black/white threshold',
     )
+    parser.add_argument(
+        '-e',
+        '--ext',
+        default='png',
+        help='output filetype',
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -126,8 +132,8 @@ def main():
     if args.save:
         file_name, ext = os.path.splitext(os.path.basename(args.input_file))
         dir_path = os.path.dirname(args.input_file)
-        edge_save_path = file_name + '_f-edge' + ext
-        dither_save_path = file_name + '_dither' + ext
+        edge_save_path = file_name + '_f-edge.' + args.ext
+        dither_save_path = file_name + '_dither.' + args.ext
     else:
         dither_save_path = None
         edge_save_path = None
