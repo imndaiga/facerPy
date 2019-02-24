@@ -256,15 +256,15 @@ def getParser(parser_formatter):
 
     return parser
 
-def newImageObject(input_file, ext, save, string_mod=''):
+def newImageObject(input_file, string_mod='', save=False):
     if save:
-        file_name, _ = os.path.splitext(os.path.basename(input_file))
+        file_name, ext = os.path.splitext(os.path.basename(input_file))
         dir_path = os.path.dirname(input_file)
-        edge_output_path = os.path.join(dir_path, file_name + '_edges{}.'.format('_'+string_mod) + ext)
-        dither_output_path = os.path.join(dir_path, file_name + '_dithered{}.'.format('_'+string_mod) + ext)
-        inverted_output_path = os.path.join(dir_path, file_name + '_inverted{}.'.format('_'+string_mod) + ext)
-        detections_output_path = os.path.join(dir_path, file_name + '_detections{}.'.format('_'+string_mod) + ext)
-        stringy_output_path = os.path.join(dir_path, file_name + '_stringy{}.svg'.format('_'+string_mod))
+        edge_output_path = os.path.join(dir_path, file_name + '_edges{}'.format(string_mod) + ext)
+        dither_output_path = os.path.join(dir_path, file_name + '_dithered{}'.format(string_mod) + ext)
+        inverted_output_path = os.path.join(dir_path, file_name + '_inverted{}'.format(string_mod) + ext)
+        detections_output_path = os.path.join(dir_path, file_name + '_detections{}'.format(string_mod) + ext)
+        stringy_output_path = os.path.join(dir_path, file_name + '_stringy{}.svg'.format(string_mod))
     else:
         dither_output_path = None
         edge_output_path = None
@@ -320,6 +320,32 @@ def interactiveHalt(interactive, msg):
             logging.info('Exiting facerPy on user request.')
             sys.exit(2)
 
+def generateImageObjects(faces, imgs, ext, padding, interactive=False, save=False):
+    file_name, _ = os.path.splitext(os.path.basename(imgs['original'].filename))
+    dir_path = os.path.dirname(imgs['original'].filename)
+    output_basepath = os.path.join(dir_path, file_name+'.'+ext)
+
+    if len(faces) > 0:
+        cv2_img = cv2.cvtColor(np.array(imgs['original']), cv2.COLOR_RGB2BGR)
+        for index, (x,y,w,h) in enumerate(faces):
+            cv2.rectangle(cv2_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            img_obj = newImageObject(output_basepath, '_face{}'.format(index+1), save)
+            img_obj['input']['img'] = Image.fromarray(
+                np.array(imgs['original'])[
+                    y - padding:y + h + padding,
+                    x - padding:x + w  + padding
+                ]).convert('L')
+            imgs['faces']['img'] = Image.fromarray(cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB))
+            imgs['enhanced'].append(img_obj)
+    else:
+        interactiveHalt(interactive, 'No faces found! Continue?')
+        img_obj = newImageObject(output_basepath, save=True)
+        img_obj['input']['img'] = imgs['original'].convert('L')
+
+        imgs['enhanced'].append(img_obj)
+
+    return imgs
+
 def main():
     parser = getParser(argparse.ArgumentDefaultsHelpFormatter)
     args = parser.parse_args()
@@ -334,7 +360,6 @@ def main():
         datefmt='%d-%b-%y %H:%M:%S'
     )
 
-    start_time = time.time()
     imgs = {
         'original': Image.open(args.input_file),
         'faces': {
@@ -346,31 +371,15 @@ def main():
         },
         'enhanced': [],
     }
+
+    start_time = time.time()
     faces = findFacesInImage(
         imgs['original'],
         args.opencv_scaleFactor,
         args.opencv_minNeighbors,
         (args.opencv_minSize,)*2
     )
-
-    if len(faces) > 0:
-        cv2_img = cv2.cvtColor(np.array(imgs['original']), cv2.COLOR_RGB2BGR)
-        for index, (x,y,w,h) in enumerate(faces):
-            cv2.rectangle(cv2_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            img_obj = newImageObject(args.input_file, args.ext, args.save, '_face{}'.format(index+1))
-            img_obj['input']['img'] = Image.fromarray(
-                np.array(imgs['original'])[
-                    y - args.opencv_padding:y + h + args.opencv_padding,
-                    x - args.opencv_padding:x + w  + args.opencv_padding
-                ]).convert('L')
-            imgs['faces']['img'] = Image.fromarray(cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB))
-            imgs['enhanced'].append(img_obj)
-    else:
-        interactiveHalt(args.interactive, 'No faces found! Continue?')
-        img_obj = newImageObject(args.input_file, args.ext, args.save)
-        img_obj['input']['img'] = imgs['original'].convert('L')
-
-        imgs['enhanced'].append(img_obj)
+    generateImageObjects(faces, imgs, args.ext, args.opencv_padding, args.interactive, args.save)
 
     for index, img_obj in enumerate(imgs['enhanced']):
         if index > 0:
@@ -402,7 +411,6 @@ def main():
         img_obj['stringy']['img'] = stringyPlotter(pre_stringy_img, args.stringy_divisor)
 
     saveImages(imgs)
-
     end_time = time.time()
     logger.info('Image processing complete! Total Time Taken: {:.2f} seconds.'.format(end_time - start_time))
 
