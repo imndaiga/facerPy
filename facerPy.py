@@ -309,7 +309,7 @@ def saveImages(imgs):
                 else:
                     img_obj['img'].save(img_obj['output_path'])
 
-def interactiveHalt(interactive, msg):
+def interactiveHalt(interactive, msg, callback=None, **kwargs):
     if interactive:
         continue_process = input('{} (Y/N) > '.format(msg))
         while continue_process not in ['Y', 'N']:
@@ -317,6 +317,8 @@ def interactiveHalt(interactive, msg):
             continue_process = input('{} (Y/N) > '.format(msg))
 
         if continue_process == 'N':
+            if callback is not None:
+                callback(kwargs.get('imgs'))
             logging.info('Exiting facerPy on user request.')
             sys.exit(2)
 
@@ -383,7 +385,7 @@ def main():
 
     for index, img_obj in enumerate(imgs['enhanced']):
         if index > 0:
-            interactiveHalt(args.interactive, 'Perform processing on next frame?')
+            interactiveHalt(args.interactive, 'Perform processing on next frame?', saveImages, imgs=imgs)
 
         img_obj['edge']['img'] = findEdgesInImage(img_obj['input']['img'])
         pre_dither_img = img_obj['edge']['img']
