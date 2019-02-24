@@ -51,7 +51,6 @@ def ditherImage(input_img, output_path=None, threshold=127, mode='floyd-steinber
         m = np.array(input_img)[:,:]
         m2 = dither(m, thresh = threshold)
         dither_img = Image.fromarray(m2[::-1,:])
-        dither_img.convert('1')
 
     if output_path is not None and dither_img is not None:
         logger.info('Saving dithered output to {}.'.format(output_path))
@@ -266,6 +265,13 @@ def main():
         dest = 'stringy_divisor',
         help = 'determines black pixel division in the image to obtain a sample size for stringy plotting.'
     )
+    parser.add_argument(
+        '-si', '--stringy-invert',
+        action = 'store_true',
+        default = False,
+        dest = 'stringy_invert',
+        help = 'perform pre-string plotting image inversion.'
+    )
 
     args = parser.parse_args()
 
@@ -350,12 +356,17 @@ def main():
             args.dither_threshold,
             args.dither_mode,
         )
-        inverted_img = invertImage(
-            dither_img,
-            img_obj['inverted_save_path'],
-        )
+
+        if (args.stringy_invert):
+            pre_stringy_img = invertImage(
+                dither_img,
+                img_obj['inverted_save_path'],
+            )
+        else:
+            pre_stringy_img = dither_img.convert('1')
+
         sringy_img = stringyPlotter(
-            dither_img.convert('1'),
+            pre_stringy_img,
             args.stringy_divisor,
             img_obj['stringy_save_path'],
         )
