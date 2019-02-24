@@ -85,7 +85,7 @@ def invertImage(input_img, output_path=None):
         inverted_img.save(output_path)
     return inverted_img
 
-def findFacesInImage(input_img):
+def findFacesInImage(input_img, scaleFactor, minNeighbors, minSize, output_path=None):
     if hasattr(input_img, 'filename'):
         logger.info('Performing face detection on {}.'.format(os.path.basename(input_img.filename)))
     else:
@@ -94,7 +94,7 @@ def findFacesInImage(input_img):
     img = np.array(input_img)
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-    faces = face_cascade.detectMultiScale(gray_img, 1.2, 6)
+    faces = face_cascade.detectMultiScale(gray_img, scaleFactor, 0, minNeighbors, minSize)
 
     if len(faces) == 0:
         logger.warning('No faces found!')
@@ -102,6 +102,17 @@ def findFacesInImage(input_img):
         return np.array([])
 
     logger.info(f'Found {len(faces)} face(s)!')
+
+    if output_path:
+        logger.info('Saving detections output to {}.'.format(output_path))
+        cv2_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        for (x,y,w,h) in faces:
+            cv2.rectangle(cv2_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.imwrite(output_path, cv2_img)
+            # res_cv2_img = cv2.resize(cv2_img, (0, 0), fx=0.15, fy=0.15)
+            # cv2.imshow("Face Detections", res_cv2_img)
+            # cv2.waitKey(0)
+
     return faces
 
 def main():
@@ -160,6 +171,32 @@ def main():
         dest='dither_resize',
         help = 'resize pre-dither image on longest dimension',
     )
+    parser.add_argument(
+        '-os', '--opencv-scale-factor',
+        type = float,
+        default = 1.3,
+        dest = 'opencv_scaleFactor',
+        help = 'opencv scale factor that specifies how much the image size'+
+               'is reduced at each scale',
+    )
+    parser.add_argument(
+        '-ominn', '--opencv-min-neighbors',
+        type = int,
+        default = 6,
+        dest = 'opencv_minNeighbors',
+        help = 'opencv min-neighbors that specifies the quality of detected faces'+
+               ' higher number results in fewer detections of higher quality. 3 - 6'+
+               ' is a good start.',
+    )
+    parser.add_argument(
+        '-omins', '--opencv-min-size',
+        type = int,
+        default = 800,
+        dest = 'opencv_minSize',
+        help = 'opencv min-size that determines how small your detections can be.'+
+               '30 > (30,30) is a good start.',
+    )
+
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -178,19 +215,26 @@ def main():
         edge_save_path = file_name + '_edges.' + args.ext
         dither_save_path = file_name + '_dithered.' + args.ext
         inverted_save_path = file_name + '_inverted.' + args.ext
+        detections_save_path = file_name + '_detections.' + args.ext
     else:
         dither_save_path = None
         edge_save_path = None
         inverted_save_path = None
+        detections_save_path = None
 
     start_time = time.time()
     input_img = Image.open(args.input_file)
     edge_img = findEdgesInImage(input_img, edge_save_path)
-    faces = findFacesInImage(input_img)
+    faces = findFacesInImage(
+        input_img,
+        args.opencv_scaleFactor,
+        args.opencv_minNeighbors,
+        (args.opencv_minSize,)*2,
+        detections_save_path
+    )
 
     imgs_arr = []
     if len(faces) > 0:
-        cv2_img = cv2.cvtColor(np.array(input_img), cv2.COLOR_RGB2BGR)
         for i, (x, y, w, h) in enumerate(faces):
             face_img = Image.fromarray(np.array(edge_img)[y:y+h, x:x+w])
             dith_save_arr = list(dither_save_path)
@@ -204,12 +248,6 @@ def main():
                     ,
                 'img': face_img,
             })
-            cv2.rectangle(cv2_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-        logger.info('Displaying all face detections in window.')
-        res_cv2_img = cv2.resize(cv2_img, (0, 0), fx=0.15, fy=0.15)
-        cv2.imshow("Face Detections", res_cv2_img)
-        cv2.waitKey(0)
     else:
         imgs_arr.append(
             {
