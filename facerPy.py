@@ -195,6 +195,13 @@ def main():
         help='output filetype',
     )
     parser.add_argument(
+        '-ri', '--run-interactive',
+        action = 'store_true',
+        default = False,
+        dest = 'interactive',
+        help='run interactively.'
+    )
+    parser.add_argument(
         '-dm', '--dither-mode',
         choices=['atkinson','floyd-steinberg'],
         default='floyd-steinberg',
@@ -342,6 +349,17 @@ def main():
         )
 
     for img_obj in imgs_arr:
+
+        if (args.interactive):
+            continue_process = input('Continue with processing? (Y/N) > ')
+            while continue_process not in ['Y', 'N']:
+                print('Ooops! Invalid choice selected. Let\'s try this again :)')
+                continue_process = input('Continue with processing? (Y/N) > ')
+
+            if continue_process == 'N':
+                logging.info('Exiting facerPy on user request.')
+                sys.exit(2)
+
         pre_dither_img = img_obj['img'].convert('L')
         if args.dither_contrast:
             pre_dither_img = ImageEnhance.Contrast(pre_dither_img).enhance(args.dither_contrast)
