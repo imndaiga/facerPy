@@ -228,7 +228,7 @@ def main():
         help = 'resize pre-dither image on longest dimension',
     )
     parser.add_argument(
-        '-os', '--opencv-scale-factor',
+        '-osf', '--opencv-scale-factor',
         type = float,
         default = 1.3,
         dest = 'opencv_scaleFactor',
@@ -236,7 +236,7 @@ def main():
                'is reduced at each scale',
     )
     parser.add_argument(
-        '-ominn', '--opencv-min-neighbors',
+        '-omn', '--opencv-min-neighbors',
         type = int,
         default = 6,
         dest = 'opencv_minNeighbors',
@@ -245,7 +245,7 @@ def main():
                ' is a good start.',
     )
     parser.add_argument(
-        '-omins', '--opencv-min-size',
+        '-oms', '--opencv-min-size',
         type = int,
         default = 800,
         dest = 'opencv_minSize',
@@ -253,14 +253,14 @@ def main():
                '30 > (30,30) is a good start.',
     )
     parser.add_argument(
-        '-opad','--opencv-padding',
+        '-op','--opencv-padding',
         type = int,
         default = 0,
         dest = 'opencv_padding',
         help = 'padding applied to facial roi from face detector.'
     )
     parser.add_argument(
-        '-sdiv','--stringy-divisor',
+        '-sd','--stringy-divisor',
         type = int,
         default = 2,
         dest = 'stringy_divisor',
