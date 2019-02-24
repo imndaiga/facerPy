@@ -196,6 +196,13 @@ def main():
         help = 'opencv min-size that determines how small your detections can be.'+
                '30 > (30,30) is a good start.',
     )
+    parser.add_argument(
+        '-opad','--opencv-padding',
+        type = int,
+        default = 0,
+        dest = 'opencv_padding',
+        help = 'padding applied to facial roi from face detector.'
+    )
 
     args = parser.parse_args()
 
@@ -236,7 +243,10 @@ def main():
     imgs_arr = []
     if len(faces) > 0:
         for i, (x, y, w, h) in enumerate(faces):
-            face_img = Image.fromarray(np.array(edge_img)[y:y+h, x:x+w])
+            face_img = Image.fromarray(
+                np.array(edge_img)
+                [y - args.opencv_padding:y + h + args.opencv_padding, x - args.opencv_padding:x + w  + args.opencv_padding]
+            )
             dith_save_arr = list(dither_save_path)
             inv_save_arr = list(inverted_save_path)
             dith_save_arr.insert(dither_save_path.find('.'),'_face{}'.format(i + 1))
