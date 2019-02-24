@@ -37,7 +37,7 @@ def dither(num, thresh = 127):
                     derr[y + 1, x + 1] += errval / div
     return num[::-1,:] * 255
 
-def ditherImage(input_img, output_path=None, threshold=127, mode='floyd-steinberg'):
+def ditherImage(input_img, threshold=127, mode='floyd-steinberg'):
     if hasattr(input_img, 'filename'):
         logger.info('Performing image dithering on {}.'.format(os.path.basename(input_img.filename)))
     else:
@@ -52,13 +52,9 @@ def ditherImage(input_img, output_path=None, threshold=127, mode='floyd-steinber
         m2 = dither(m, thresh = threshold)
         dither_img = Image.fromarray(m2[::-1,:])
 
-    if output_path is not None and dither_img is not None:
-        logger.info('Saving dithered output to {}.'.format(output_path))
-        dither_img.save(output_path)
-
     return dither_img
 
-def findEdgesInImage(input_img, output_path=None):
+def findEdgesInImage(input_img):
     if hasattr(input_img, 'filename'):
         logger.info('Performing image edge filtering on {}.'.format(os.path.basename(input_img.filename)))
     else:
@@ -66,26 +62,21 @@ def findEdgesInImage(input_img, output_path=None):
 
     edge_img = input_img.filter(ImageFilter.FIND_EDGES)
 
-    if output_path is not None:
-        logger.info('Saving edge filter output to {}.'.format(output_path))
-        edge_img.save(output_path)
-
     logger.info('Completed edge filtering.')
+
     return edge_img
 
-def invertImage(input_img, output_path=None):
+def invertImage(input_img):
     if hasattr(input_img, 'filename'):
         logger.info('Performing image inversion on {}.'.format(os.path.basename(input_img.filename)))
     else:
         logger.info('Performing image inversion.')
 
     inverted_img = ImageOps.invert(input_img).convert('1')
-    if output_path:
-        logger.info('Saving inverted image output to {}.'.format(output_path))
-        inverted_img.save(output_path)
+
     return inverted_img
 
-def findFacesInImage(input_img, scaleFactor, minNeighbors, minSize, output_path=None):
+def findFacesInImage(input_img, scaleFactor, minNeighbors, minSize):
     if hasattr(input_img, 'filename'):
         logger.info('Performing face detection on {}.'.format(os.path.basename(input_img.filename)))
     else:
@@ -103,19 +94,9 @@ def findFacesInImage(input_img, scaleFactor, minNeighbors, minSize, output_path=
 
     logger.info(f'Found {len(faces)} face(s)!')
 
-    if output_path:
-        logger.info('Saving detections output to {}.'.format(output_path))
-        cv2_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        for (x,y,w,h) in faces:
-            cv2.rectangle(cv2_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            cv2.imwrite(output_path, cv2_img)
-            # res_cv2_img = cv2.resize(cv2_img, (0, 0), fx=0.15, fy=0.15)
-            # cv2.imshow("Face Detections", res_cv2_img)
-            # cv2.waitKey(0)
-
     return faces
 
-def stringyPlotter(input_img, divisor, output_path=None):
+def stringyPlotter(input_img, divisor):
     """
         source: https://github.com/wndaiga/StringyPlotter
     """
@@ -157,21 +138,14 @@ def stringyPlotter(input_img, divisor, output_path=None):
     for x in collection[1:]:
         path_string += line_template.format(*x)
 
-    final_svg = svg_template.format(
+    return svg_template.format(
             input_img.width,
             input_img.height,
             path_template.format(path_string)
         )
 
-    if output_path:
-        logger.info('Saving stringy output to {}.'.format(output_path))
-        with open(output_path, 'w') as f:
-            f.write(final_svg)
-
-    return final_svg
-
-def main():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def getParser(parser_formatter):
+    parser = argparse.ArgumentParser(formatter_class=parser_formatter)
     parser.add_argument(
         '-i', '--input-file',
         dest='input_file',
@@ -280,7 +254,79 @@ def main():
         help = 'perform pre-string plotting image inversion.'
     )
 
+    return parser
+
+def newImageObject(input_file, ext, save, string_mod=''):
+    if save:
+        file_name, _ = os.path.splitext(os.path.basename(input_file))
+        dir_path = os.path.dirname(input_file)
+        edge_output_path = os.path.join(dir_path, file_name + '_edges{}.'.format('_'+string_mod) + ext)
+        dither_output_path = os.path.join(dir_path, file_name + '_dithered{}.'.format('_'+string_mod) + ext)
+        inverted_output_path = os.path.join(dir_path, file_name + '_inverted{}.'.format('_'+string_mod) + ext)
+        detections_output_path = os.path.join(dir_path, file_name + '_detections{}.'.format('_'+string_mod) + ext)
+        stringy_output_path = os.path.join(dir_path, file_name + '_stringy{}.svg'.format('_'+string_mod))
+    else:
+        dither_output_path = None
+        edge_output_path = None
+        inverted_output_path = None
+        detections_output_path = None
+        stringy_output_path = None
+
+    return {
+        'input': {
+            'img': Image.NONE
+        },
+        'dither': {
+            'output_path': dither_output_path,
+            'img': Image.NONE
+        },
+        'inverted': {
+            'output_path': inverted_output_path,
+            'img': Image.NONE
+        },
+        'edge': {
+            'output_path': edge_output_path,
+            'img': Image.NONE
+        },
+        'stringy': {
+            'output_path': stringy_output_path,
+            'img': Image.NONE
+        },
+    }
+
+def saveImages(imgs):
+    if imgs['faces'].get('output_path') and imgs['faces'].get('img'):
+        logger.info('Saving faces output to {}.'.format(imgs['faces']['output_path']))
+        imgs['faces']['img'].save(imgs['faces']['output_path'])
+
+    for img_objs in imgs['enhanced']:
+        for enhancement, img_obj in {k: v for k, v in img_objs.items() if v.get('output_path') and v.get('img')}.items():
+            if img_obj['output_path']:
+                logger.info('Saving {} output to {}.'.format(enhancement, img_obj['output_path']))
+                if enhancement == 'stringy':
+                    with open(img_obj['output_path'], 'w') as f:
+                        f.write(img_obj['img'])
+                else:
+                    img_obj['img'].save(img_obj['output_path'])
+
+def interactiveHalt(interactive, msg):
+    if interactive:
+        continue_process = input('{} (Y/N) > '.format(msg))
+        while continue_process not in ['Y', 'N']:
+            print('Ooops! Invalid choice selected. Let\'s try this again :)')
+            continue_process = input('{} (Y/N) > '.format(msg))
+
+        if continue_process == 'N':
+            logging.info('Exiting facerPy on user request.')
+            sys.exit(2)
+
+def main():
+    parser = getParser(argparse.ArgumentDefaultsHelpFormatter)
     args = parser.parse_args()
+
+    if not os.path.exists(args.input_file):
+        logger.error('Input file path not valid!')
+        sys.exit(1)
 
     logging.basicConfig(
         level=logging.getLevelName(args.log_level.upper()),
@@ -288,79 +334,51 @@ def main():
         datefmt='%d-%b-%y %H:%M:%S'
     )
 
-    if not os.path.exists(args.input_file):
-        logger.error('Input file path not valid!')
-        sys.exit(1)
-
-    if args.save:
-        file_name, ext = os.path.splitext(os.path.basename(args.input_file))
-        dir_path = os.path.dirname(args.input_file)
-        edge_save_path = os.path.join(dir_path, file_name + '_edges.' + args.ext)
-        dither_save_path = os.path.join(dir_path, file_name + '_dithered.' + args.ext)
-        inverted_save_path = os.path.join(dir_path, file_name + '_inverted.' + args.ext)
-        detections_save_path = os.path.join(dir_path, file_name + '_detections.' + args.ext)
-        stringy_save_path = os.path.join(dir_path, file_name + '_stringy.svg')
-    else:
-        dither_save_path = None
-        edge_save_path = None
-        inverted_save_path = None
-        detections_save_path = None
-        stringy_save_path = None
-
     start_time = time.time()
-    input_img = Image.open(args.input_file)
-    edge_img = findEdgesInImage(input_img, edge_save_path)
+    imgs = {
+        'original': Image.open(args.input_file),
+        'faces': {
+            'output_path': os.path.join(
+                os.path.dirname(args.input_file),
+                os.path.splitext(os.path.basename(args.input_file))[0] + '_faces.' + args.ext
+            ),
+            'img': Image.NONE
+        },
+        'enhanced': [],
+    }
     faces = findFacesInImage(
-        input_img,
+        imgs['original'],
         args.opencv_scaleFactor,
         args.opencv_minNeighbors,
-        (args.opencv_minSize,)*2,
-        detections_save_path
+        (args.opencv_minSize,)*2
     )
 
-    imgs_arr = []
     if len(faces) > 0:
-        for i, (x, y, w, h) in enumerate(faces):
-            face_img = Image.fromarray(
-                np.array(edge_img)
-                [y - args.opencv_padding:y + h + args.opencv_padding, x - args.opencv_padding:x + w  + args.opencv_padding]
-            )
-            dith_save_arr = list(dither_save_path)
-            inv_save_arr = list(inverted_save_path)
-            stringy_save_arr = list(stringy_save_path)
-            dith_save_arr.insert(dither_save_path.find('.'),'_face{}'.format(i + 1))
-            inv_save_arr.insert(inverted_save_path.find('.'),'_face{}'.format(i + 1))
-            stringy_save_arr.insert(stringy_save_path.find('.'),'_face{}'.format(i + 1))
-
-            imgs_arr.append({
-                'dither_save_path': ''.join(dith_save_arr),
-                'inverted_save_path': ''.join(inv_save_arr),
-                'stringy_save_path': ''.join(stringy_save_arr),
-                'img': face_img,
-            })
+        cv2_img = cv2.cvtColor(np.array(imgs['original']), cv2.COLOR_RGB2BGR)
+        for index, (x,y,w,h) in enumerate(faces):
+            cv2.rectangle(cv2_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            img_obj = newImageObject(args.input_file, args.ext, args.save, '_face{}'.format(index+1))
+            img_obj['input']['img'] = Image.fromarray(
+                np.array(imgs['original'])[
+                    y - args.opencv_padding:y + h + args.opencv_padding,
+                    x - args.opencv_padding:x + w  + args.opencv_padding
+                ]).convert('L')
+            imgs['faces']['img'] = Image.fromarray(cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB))
+            imgs['enhanced'].append(img_obj)
     else:
-        imgs_arr.append(
-            {
-                'dither_save_path': dither_save_path,
-                'inverted_save_path': inverted_save_path,
-                'stringy_save_path': stringy_save_path,
-                'img': input_img,
-            }
-        )
+        interactiveHalt(args.interactive, 'No faces found! Continue?')
+        img_obj = newImageObject(args.input_file, args.ext, args.save)
+        img_obj['input']['img'] = imgs['original'].convert('L')
 
-    for img_obj in imgs_arr:
+        imgs['enhanced'].append(img_obj)
 
-        if (args.interactive):
-            continue_process = input('Continue with processing? (Y/N) > ')
-            while continue_process not in ['Y', 'N']:
-                print('Ooops! Invalid choice selected. Let\'s try this again :)')
-                continue_process = input('Continue with processing? (Y/N) > ')
+    for index, img_obj in enumerate(imgs['enhanced']):
+        if index > 0:
+            interactiveHalt(args.interactive, 'Perform processing on next frame?')
 
-            if continue_process == 'N':
-                logging.info('Exiting facerPy on user request.')
-                sys.exit(2)
+        img_obj['edge']['img'] = findEdgesInImage(img_obj['input']['img'])
+        pre_dither_img = img_obj['edge']['img']
 
-        pre_dither_img = img_obj['img'].convert('L')
         if args.dither_contrast:
             pre_dither_img = ImageEnhance.Contrast(pre_dither_img).enhance(args.dither_contrast)
         if args.dither_resize:
@@ -368,26 +386,22 @@ def main():
         if args.dither_sharpness:
             pre_dither_img = ImageEnhance.Sharpness(pre_dither_img).enhance(args.dither_sharpness)
 
-        dither_img = ditherImage(
+        img_obj['dither']['img'] = ditherImage(
             pre_dither_img,
-            img_obj['dither_save_path'],
             args.dither_threshold,
             args.dither_mode,
         )
 
-        if (args.stringy_invert):
-            pre_stringy_img = invertImage(
-                dither_img,
-                img_obj['inverted_save_path'],
-            )
-        else:
-            pre_stringy_img = dither_img.convert('1')
+        img_obj['inverted']['img'] = invertImage(img_obj['dither']['img'])
 
-        sringy_img = stringyPlotter(
-            pre_stringy_img,
-            args.stringy_divisor,
-            img_obj['stringy_save_path'],
-        )
+        if (args.stringy_invert):
+            pre_stringy_img = img_obj['inverted']['img']
+        else:
+            pre_stringy_img = img_obj['dither']['img'].convert('1')
+
+        img_obj['stringy']['img'] = stringyPlotter(pre_stringy_img, args.stringy_divisor)
+
+    saveImages(imgs)
 
     end_time = time.time()
     logger.info('Image processing complete! Total Time Taken: {:.2f} seconds.'.format(end_time - start_time))
