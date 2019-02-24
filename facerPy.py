@@ -288,11 +288,11 @@ def main():
     if args.save:
         file_name, ext = os.path.splitext(os.path.basename(args.input_file))
         dir_path = os.path.dirname(args.input_file)
-        edge_save_path = file_name + '_edges.' + args.ext
-        dither_save_path = file_name + '_dithered.' + args.ext
-        inverted_save_path = file_name + '_inverted.' + args.ext
-        detections_save_path = file_name + '_detections.' + args.ext
-        stringy_save_path = file_name + '_stringy.svg'
+        edge_save_path = os.path.join(dir_path, file_name + '_edges.' + args.ext)
+        dither_save_path = os.path.join(dir_path, file_name + '_dithered.' + args.ext)
+        inverted_save_path = os.path.join(dir_path, file_name + '_inverted.' + args.ext)
+        detections_save_path = os.path.join(dir_path, file_name + '_detections.' + args.ext)
+        stringy_save_path = os.path.join(dir_path, file_name + '_stringy.svg')
     else:
         dither_save_path = None
         edge_save_path = None
