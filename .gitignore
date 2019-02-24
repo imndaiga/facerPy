@@ -137,6 +137,7 @@ dmypy.json
 *.jif
 *.jfif
 *.jfi
+!images/sample*
 
 # JPEG 2000
 *.jp2
