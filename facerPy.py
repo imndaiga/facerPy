@@ -6,6 +6,7 @@ import time
 import logging
 import argparse
 from PIL import Image, ImageEnhance, ImageOps, ImageFilter
+from scipy.spatial.distance import cdist
 import numpy as np
 import cv2
 
@@ -79,7 +80,7 @@ def invertImage(input_img, output_path=None):
     else:
         logger.info('Performing image inversion.')
 
-    inverted_img = ImageOps.invert(input_img)
+    inverted_img = ImageOps.invert(input_img).convert('1')
     if output_path:
         logger.info('Saving inverted image output to {}.'.format(output_path))
         inverted_img.save(output_path)
@@ -114,6 +115,61 @@ def findFacesInImage(input_img, scaleFactor, minNeighbors, minSize, output_path=
             # cv2.waitKey(0)
 
     return faces
+
+def stringyPlotter(input_img, divisor, output_path=None):
+    """
+        source: https://github.com/wndaiga/StringyPlotter
+    """
+    if hasattr(input_img, 'filename'):
+        logger.info('Performing stringy plotting on {}.'.format(os.path.basename(input_img.filename)))
+    else:
+        logger.info('Performing stringy plotting.')
+
+    ii = np.array(input_img)
+    iii = np.where(ii==1)
+    iiii = np.column_stack(reversed(iii))
+    iiiii = iiii[np.random.choice(iiii.shape[0],iiii.shape[0]//divisor,replace=False),:]
+
+    the_first = iiiii[0]
+    first_mask  = np.ones(iiiii.shape[0], dtype=bool)
+    first_mask[[0]] = False
+    the_rest = iiiii[first_mask]
+    collection = np.array([the_first])
+
+    for x in range(iiiii.shape[0]-1):
+        all_distances = cdist(the_rest, [the_first])
+        next_distance = np.min(all_distances)
+        distance_match = np.where(all_distances == next_distance)[0][0]
+        found_next = the_rest[distance_match]
+        collection = np.concatenate([collection,np.array([found_next])])
+        next_mask  = np.ones(the_rest.shape[0], dtype=bool)
+        next_mask[[distance_match]] = False
+        next_rest  = the_rest[next_mask]
+        next_first = found_next
+        the_first = found_next
+        the_rest  = next_rest
+
+    svg_template = '<svg width="{}" height="{}" xmlns="http://www.w3.org/2000/svg">{}</svg>'
+    path_template = '<path d="{}" fill="none" stroke="black" />"'
+    move_template = 'M {} {} '
+    line_template = 'L {} {} '
+
+    path_string = move_template.format(*collection[0])
+    for x in collection[1:]:
+        path_string += line_template.format(*x)
+
+    final_svg = svg_template.format(
+            input_img.width,
+            input_img.height,
+            path_template.format(path_string)
+        )
+
+    if output_path:
+        logger.info('Saving stringy output to {}.'.format(output_path))
+        with open(output_path, 'w') as f:
+            f.write(final_svg)
+
+    return final_svg
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -203,6 +259,13 @@ def main():
         dest = 'opencv_padding',
         help = 'padding applied to facial roi from face detector.'
     )
+    parser.add_argument(
+        '-sdiv','--stringy-divisor',
+        type = int,
+        default = 2,
+        dest = 'stringy_divisor',
+        help = 'determines black pixel division in the image to obtain a sample size for stringy plotting.'
+    )
 
     args = parser.parse_args()
 
@@ -223,11 +286,13 @@ def main():
         dither_save_path = file_name + '_dithered.' + args.ext
         inverted_save_path = file_name + '_inverted.' + args.ext
         detections_save_path = file_name + '_detections.' + args.ext
+        stringy_save_path = file_name + '_stringy.svg'
     else:
         dither_save_path = None
         edge_save_path = None
         inverted_save_path = None
         detections_save_path = None
+        stringy_save_path = None
 
     start_time = time.time()
     input_img = Image.open(args.input_file)
@@ -249,13 +314,15 @@ def main():
             )
             dith_save_arr = list(dither_save_path)
             inv_save_arr = list(inverted_save_path)
+            stringy_save_arr = list(stringy_save_path)
             dith_save_arr.insert(dither_save_path.find('.'),'_face{}'.format(i + 1))
             inv_save_arr.insert(inverted_save_path.find('.'),'_face{}'.format(i + 1))
+            stringy_save_arr.insert(stringy_save_path.find('.'),'_face{}'.format(i + 1))
 
             imgs_arr.append({
                 'dither_save_path': ''.join(dith_save_arr),
-                'inverted_save_path': ''.join(inv_save_arr)
-                    ,
+                'inverted_save_path': ''.join(inv_save_arr),
+                'stringy_save_path': ''.join(stringy_save_arr),
                 'img': face_img,
             })
     else:
@@ -263,6 +330,7 @@ def main():
             {
                 'dither_save_path': dither_save_path,
                 'inverted_save_path': inverted_save_path,
+                'stringy_save_path': stringy_save_path,
                 'img': input_img,
             }
         )
@@ -285,6 +353,11 @@ def main():
         inverted_img = invertImage(
             dither_img,
             img_obj['inverted_save_path'],
+        )
+        sringy_img = stringyPlotter(
+            dither_img.convert('1'),
+            args.stringy_divisor,
+            img_obj['stringy_save_path'],
         )
 
     end_time = time.time()
