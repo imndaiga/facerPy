@@ -95,12 +95,12 @@ Perform processing on next frame? (Y/N) > N
 The above snippet takes in an image named `sample1.jpg` and runs the varied effects on it. The results are saved as requested by the save flag `-s`, with logging set to `INFO` and dithering configured to use the `atkinson algorithm`. The output of the above is shown below:
 
 <p align="center">
-  <img width="260" height="auto" src="/images/sample1.jpg?raw=true">
-  <img width="260" height="auto" src="/images/sample1_faces.png?raw=true">
-  <img width="260" height="auto" src="/images/sample1_edges_face1.png?raw=true">
-  <img width="260" height="auto" src="/images/sample1_dithered_face1.png?raw=true">
-  <img width="260" height="auto" src="/images/sample1_inverted_face1.png?raw=true">
-  <img width="260" height="auto" src="/images/sample1_stringy_face1.png?raw=true">
+  <img width="192" height="auto" src="/images/sample1.jpg?raw=true" alt="Original">
+  <img width="192" height="auto" src="/images/sample1_faces.png?raw=true" alt="Detected Faces">
+  <img width="260" height="auto" src="/images/sample1_edges_face1.png?raw=true" alt="Filtered Edges">
+  <img width="260" height="auto" src="/images/sample1_dithered_face1.png?raw=true" alt="Dithered Output">
+  <img width="260" height="auto" src="/images/sample1_inverted_face1.png?raw=true" alt="Inverted Output">
+  <img width="260" height="auto" src="/images/sample1_stringy_face1.png?raw=true" alt="Stringy Output">
 </p>
 
 ### Credits
