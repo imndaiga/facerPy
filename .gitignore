@@ -163,6 +163,7 @@ dmypy.json
 
 # Portable Network Graphics
 *.png
+!images/sample*
 
 # Animated Portable Network Graphics
 *.apng
