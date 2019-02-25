@@ -8,6 +8,7 @@ import argparse
 from PIL import Image, ImageEnhance, ImageOps, ImageFilter
 from scipy.spatial.distance import cdist
 import numpy as np
+import cairosvg
 import cv2
 
 logger = logging.getLogger('facerPy')
@@ -304,8 +305,13 @@ def saveImages(imgs):
             if img_obj['output_path']:
                 logger.info('Saving {} output to {}.'.format(enhancement, img_obj['output_path']))
                 if enhancement == 'stringy':
+                    filename, _ = os.path.splitext(os.path.basename(img_obj['output_path']))
+                    svg_outfile = os.path.join(os.path.dirname(img_obj['output_path']), filename+'.png')
                     with open(img_obj['output_path'], 'w') as f:
                         f.write(img_obj['img'])
+                    logger.info('Saving stringy png output to {}.'.format(svg_outfile))
+                    f = open(img_obj['output_path'])
+                    cairosvg.svg2png(file_obj=f, write_to=svg_outfile)
                 else:
                     img_obj['img'].save(img_obj['output_path'])
 
@@ -319,7 +325,7 @@ def interactiveHalt(interactive, msg, callback=None, **kwargs):
         if continue_process == 'N':
             if callback is not None:
                 callback(kwargs.get('imgs'))
-            logging.info('Exiting facerPy on user request.')
+            logger.info('Exiting facerPy on user request.')
             sys.exit(2)
 
 def generateImageObjects(faces, imgs, ext, padding, interactive=False, save=False):
